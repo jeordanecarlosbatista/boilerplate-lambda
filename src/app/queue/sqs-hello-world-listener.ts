@@ -1,0 +1,28 @@
+import { z } from "zod";
+import { Message } from "@aws-sdk/client-sqs";
+import { QueueListener } from "@jeordanecarlosbatista/jcb-aws-sqs";
+import { Command } from "../../domain/command";
+
+export const MessagePayload = z.object({
+  message: z.string(),
+});
+export type MessagePayload = z.infer<typeof MessagePayload>;
+
+export class SQSQueueListener extends QueueListener {
+  constructor(private readonly command: Command) {
+    super();
+  }
+
+  async handleMessage(message: Message): Promise<void> {
+    return await this.resolveWith({
+      message,
+      schema: MessagePayload,
+      resolveCallback: async (message) => {
+        await this.command.execute();
+      },
+      payloadErrorCallback: async (errors) => {
+        console.error("Invalid message received:", errors);
+      },
+    });
+  }
+}
