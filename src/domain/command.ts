@@ -1,3 +1,3 @@
 export abstract class Command {
-  abstract execute(): Promise<void>;
+  abstract execute(data: any): Promise<void>;
 }

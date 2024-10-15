@@ -1,7 +1,8 @@
 import { z } from "zod";
+import { v4 as uuid } from "uuid";
 import { Message } from "@aws-sdk/client-sqs";
 import { QueueListener } from "@jeordanecarlosbatista/jcb-aws-sqs";
-import { Command } from "../../domain/command";
+import { Command } from "@app/domain/command";
 
 export const MessagePayload = z.object({
   message: z.string(),
@@ -18,10 +19,15 @@ export class SQSQueueListener extends QueueListener {
       message,
       schema: MessagePayload,
       resolveCallback: async (message) => {
-        await this.command.execute();
+        await this.command.execute(message);
       },
       payloadErrorCallback: async (errors) => {
-        console.error("Invalid message received:", errors);
+        return this.toMessageDLQ({
+          queueName: "hello-world-dlq.fifo",
+          payload: message,
+          messageDeduplicationId: uuid(),
+          messageGroupId: uuid(),
+        });
       },
     });
   }

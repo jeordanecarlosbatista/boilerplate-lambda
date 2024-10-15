@@ -3,12 +3,11 @@ import { HelloWorldRepository } from "@app/domain/repository/hello-world-reposit
 export class InMemoryHelloWorldRepository implements HelloWorldRepository {
   private readonly data: Map<string, string> = new Map();
 
-  async store() {
-    console.log("Storing data...");
-    this.data.set("hello", "world");
+  async store(data: any) {
+    this.data.set(data.id, data);
   }
 
   getAll() {
-    return this.data.get("hello");
+    return Array.from(this.data.values());
   }
 }

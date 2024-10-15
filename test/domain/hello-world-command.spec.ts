@@ -6,7 +6,9 @@ describe(HelloWorldCommand.name, () => {
     const repository = new InMemoryHelloWorldRepository();
     const command = new HelloWorldCommand(repository);
 
-    await command.execute();
+    const message = { hello: "world" };
+
+    await command.execute(message);
 
     expect(repository.getAll()).toEqual({ hello: "world" });
   });

@@ -1,3 +1,3 @@
 export abstract class HelloWorldRepository {
-  abstract store(): Promise<void>;
+  abstract store(data: any): Promise<void>;
 }
