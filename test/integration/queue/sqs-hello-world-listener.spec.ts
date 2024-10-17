@@ -1,40 +1,22 @@
 import { v4 as uuid } from "uuid";
 import {
   EnqueuerProvider,
-  QueueListenerManaged,
   SQSProvider,
 } from "@jeordanecarlosbatista/jcb-aws-sqs";
 import { retry } from "async";
 import { SQSQueueListener } from "@app/app/queue/sqs-hello-world-listener";
-import { InMemoryHelloWorldRepository } from "@app/app/db/in-memory-hello-world-repository";
-import { TestSetupManager } from "@jeordanecarlosbatista/test";
-import { HelloWorldCommand } from "@app/domain/command/hello-world-command";
+import { helloWorldRepository, TestSetup } from "@test/resource/test-setup";
 
 const makeSut = () => {
-  const helloWorldRepository = new InMemoryHelloWorldRepository();
   const enqueuer = EnqueuerProvider.factory();
   const queueProvider = SQSProvider.factory();
-  const testSetup = new TestSetupManager({
-    listenerManager: new QueueListenerManaged({
-      pollingInterval: 1000,
-      receiveMaxNumberOfMessages: 1,
-      waitTimeSeconds: 20,
-      queues: [
-        {
-          queueName: "hello-world.fifo",
-          listener: new SQSQueueListener(
-            new HelloWorldCommand(helloWorldRepository)
-          ),
-        },
-      ],
-    }),
-  });
+
+  const testSetup = new TestSetup();
 
   return {
     testSetup,
     enqueuer,
     queueProvider,
-    helloWorldRepository,
   };
 };
 
@@ -42,9 +24,11 @@ describe(SQSQueueListener.name, () => {
   jest.setTimeout(30000);
 
   it("should process a valid message correctly", async () => {
-    const { enqueuer: enqueuer, testSetup, helloWorldRepository } = makeSut();
-
+    const { enqueuer: enqueuer, testSetup } = makeSut();
     const payload = { message: "Hello, World!" };
+    const queue = testSetup.queue();
+    // TODO: Refactor this to a helper function
+    await queue.run();
     await testSetup.run(async () => {
       enqueuer.enqueue({
         queueName: "hello-world.fifo",
@@ -56,17 +40,19 @@ describe(SQSQueueListener.name, () => {
       await retry({ times: 30, interval: 300 }, async () => {
         expect(helloWorldRepository.getAll()).toEqual([payload]);
       });
+      // TODO: Refactor this to a helper function
+      await queue.purgeQueues();
+      await queue.tearDown();
     });
   });
 
   it("should process a invalid payload correctly", async () => {
-    const {
-      enqueuer: enqueuer,
-      testSetup,
-      helloWorldRepository,
-      queueProvider,
-    } = makeSut();
+    const { enqueuer: enqueuer, testSetup, queueProvider } = makeSut();
     const payload = { messages: "Hello, World!" };
+    const queue = testSetup.queue();
+
+    // TODO: Refactor this to a helper function
+    await queue.run();
     await testSetup.run(async () => {
       enqueuer.enqueue({
         queueName: "hello-world.fifo",
@@ -81,6 +67,9 @@ describe(SQSQueueListener.name, () => {
         );
         expect(Attributes?.ApproximateNumberOfMessages).toEqual("1");
       });
+      // TODO: Refactor this to a helper function
+      await queue.purgeQueues();
+      await queue.tearDown();
     });
   });
 });
